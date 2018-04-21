@@ -1,4 +1,5 @@
 const filesManager = require('./filesManager.js')
+var fs = require('fs')
 
 const SALES_IDS = {
   STORE_ID: 0,
@@ -25,6 +26,13 @@ const LOCATION_IDS = {
   TYPE: 7
 }
 
+const CALENDAR_IDS = {
+  FRIDAY_END: 0,
+  QUARTER: 1,
+  MONTH: 2,
+  YEAR: 3
+}
+
 const parseFile = (file) => {
   let allRows = require('fs').readFileSync(file).toString().split('\n')
   return {
@@ -32,6 +40,28 @@ const parseFile = (file) => {
     data: allRows.slice(1, -1).map((line) => {
       return line.split(',')
     })
+  }
+}
+
+const pushInObject = (object, path, value) => {
+  let pathIndex = 0
+  let currentObject = object
+  let insertDone = false
+  while (!insertDone) {
+    let currentKey = path[pathIndex]
+    if (pathIndex === path.length - 1) {
+      if (!currentObject[currentKey]) {
+        currentObject[currentKey] = []
+      }
+      currentObject[currentKey].push(value)
+      insertDone = true
+      break
+    }
+    if (!currentObject[currentKey]) {
+      currentObject[currentKey] = {}
+    }
+    currentObject = currentObject[currentKey]
+    pathIndex++
   }
 }
 
@@ -43,64 +73,62 @@ const salesHeader = sales.header
 const salesData = sales.data
 const locations = parseFile('./location.csv').data
 
-const mapItemsToLevel = (products, levelColumnIndex) => {
-  return products.reduce((res, curr) => {
-    return Object.assign({}, res, { [curr[PRODUCT_IDS.ITEM_ID]]: curr[levelColumnIndex] })
+const mapDataToLevel = (data, dataID, levelColumnIndex) => {
+  return data.reduce((res, curr) => {
+    return Object.assign({}, res, { [curr[dataID]]: curr[levelColumnIndex] })
   }, {})
 }
 
-const mapStoreToLevel = (locations, levelColumnIndex) => {
-  return locations.reduce((res, curr) => {
-    return Object.assign({}, res, { [curr[LOCATION_IDS.STORE_ID]]: curr[levelColumnIndex] })
-  }, {})
-}
-
-const mapSalesToLevel = (products, levelColumnIndex, sales, storeColumnIndex, locations) => {
+const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
   let tree = {}
-  const mappedItems = mapItemsToLevel(products, levelColumnIndex)
-  const mappedStores = mapStoreToLevel(locations, storeColumnIndex)
+  const mapped = []
+  for (var i = 0; i < dataItems.length; i++) {
+    mapped.push(mapDataToLevel(dataItems[i], dataIDs[i], levels[i]))
+  }
   sales.forEach((salesItem) => {
-    let categoryId = mappedItems[salesItem[SALES_IDS.ITEM_ID]]
-    let storeId = mappedStores[salesItem[SALES_IDS.STORE_ID]]
-    // write to file
-    if (categoryId && storeId) {
-      if (!tree[categoryId]) {
-        tree[categoryId] = {}
-      }
-      if (!tree[categoryId][storeId]) {
-        tree[categoryId][storeId] = []
-      }
-
-      tree[categoryId][storeId].push(salesItem)
+    let levels = salesKeys.map((key, i) => {
+      return mapped[i][salesItem[SALES_IDS[key]]]
+    })
+    if (levels.every(e => e)) {
+      pushInObject(tree, levels, salesItem)
     }
   })
   return tree
 }
 
-const saveTreeTofiles = (tree) => {
-  Object.keys(tree).forEach((dirName) => {
-    filesManager.createDir(dirName)
-    Object.keys(tree[dirName]).forEach((subDirName) => {
-      filesManager.createDir(`${dirName}/${subDirName}`)
-      filesManager.saveSalesFile(
-        `${dirName}/${subDirName}/sales.csv`,
-        tree[dirName][subDirName]
-          .map(row => row.join(','))
-          .join('\n'),
-        salesHeader
-      )
+const saveTreeToFiles = (tree, path) => {
+  if (!fs.existsSync(path)) {
+    fs.mkdirSync(path)
+  }
+
+  if (!Array.isArray(tree)) {
+    Object.keys(tree).forEach((dirName) => {
+      filesManager.createDir(path + '/' + dirName, () => {
+        saveTreeToFiles(tree[dirName], path + '/' + dirName)
+      })
     })
-  })
+  } else {
+    filesManager.saveSalesFile(
+      `${path}/sales.csv`,
+      tree
+        .map(row => row.join(','))
+        .join('\n'),
+      salesHeader
+    )
+  }
 }
 
 const productLevelName = process.argv[2]
 const locationLevelName = process.argv[3]
+const calendarLevelName = process.argv[4]
 
 let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase()]
 let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
+let calendarLevelColumnIndex = CALENDAR_IDS[calendarLevelName.toUpperCase()]
 
-saveTreeTofiles(mapSalesToLevel(productsData,
-  productLevelColumnIndex,
-  salesData,
-  locationLevelColumnIndex,
-  locations))
+saveTreeToFiles(mapSalesToLevel(salesData,
+  [productsData, locations, calendar],
+  [PRODUCT_IDS.ITEM_ID, LOCATION_IDS.STORE_ID, CALENDAR_IDS.FRIDAY_END],
+  [productLevelColumnIndex, locationLevelColumnIndex, calendarLevelColumnIndex],
+  ['ITEM_ID', 'STORE_ID', 'FRIDAY_END']
+), './output')

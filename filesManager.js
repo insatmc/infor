@@ -1,17 +1,13 @@
 var fs = require('fs')
 
-const createDir = (dir) => {
-  if (!fs.existsSync('output')) {
-    fs.mkdirSync('output')
-  }
-  dir = 'output/' + dir
+const createDir = (dir, callback) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir)
   }
+  callback()
 }
 
 const saveSalesFile = (path, content, salesHeader) => {
-  path = 'output/' + path
   content = salesHeader + '\n' + content
   fs.writeFile(path, content, (err) => {
     if (err) {
