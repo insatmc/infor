@@ -1,8 +1,8 @@
 const treeManager = require('./treeManager.js')
 const configManager = require('./configManager.js')
 const fs = require('fs')
-
-const configString = fs.readFileSync(process.argv[2] , 'utf8')
+const path = require('path')
+const configString = fs.readFileSync(process.argv[2], 'utf8')
 
 const config = configManager.mapConfigToObject(configString)
 
@@ -12,30 +12,6 @@ const SALES_IDS = {
   FRIDAY_END: 2,
   UNITES: 3,
   SALES: 4
-}
-
-const PRODUCT_IDS = {
-  ITEM_ID: 0,
-  CATEGORY_ID: 1,
-  DEPARTEMENT_ID: 2
-}
-
-const LOCATION_IDS = {
-  STORE_ID: 0,
-  ZIPCODE: 1,
-  LATITUTE: 2,
-  LONGITUDE: 3,
-  COUNTY: 4,
-  CITY: 5,
-  STATE: 6,
-  TYPE: 7
-}
-
-const CALENDAR_IDS = {
-  FRIDAY_END: 0,
-  QUARTER: 1,
-  MONTH: 2,
-  YEAR: 3
 }
 
 const parseFile = (file) => {
@@ -50,20 +26,11 @@ const parseFile = (file) => {
 
 const dataPath = config.meta['data-path']
 
-const calendarsPath = path.join(dataPath, config['hierarchy-data'].calendar)
-const productsPath = path.join(dataPath, config['hierarchy-data'].product)
-const locationsPath = path.join(dataPath, config['hierarchy-data'].location)
-
-
 const salesPath = path.join(dataPath, config['fact-data'].sales)
 
-const calendar = parseFile(calendarsPath).data
-const products = parseFile(productsPath)
-const productsData = products.data
 const sales = parseFile(salesPath)
 const salesHeader = sales.header
 const salesData = sales.data
-const locations = parseFile(locationsPath).data
 
 const mapDataToLevel = (data, dataID, levelColumnIndex) => {
   return data.reduce((res, curr) => {
@@ -88,19 +55,33 @@ const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
   return tree
 }
 
-console.log(config)
+const data = {}
 
-const productLevelName = config['partitioning-keys'].product
-const locationLevelName = config['partitioning-keys'].location
-const calendarLevelName = config['partitioning-keys'].calendar
+Object.keys(config['hierarchy-data']).map((fileName) => {
+  const parsedFile = parseFile(path.join(dataPath, config['hierarchy-data'][fileName]))
+  data[fileName] = {
+    data: parsedFile.data,
+    levelIndex: parsedFile.header.toUpperCase().split(',').indexOf(config['partitioning-keys'][fileName].toUpperCase()),
+    primaryKey: parsedFile.header.toUpperCase().split(',')[0]
+  }
+})
 
-let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase()]
-let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
-let calendarLevelColumnIndex = CALENDAR_IDS[calendarLevelName.toUpperCase()]
+let dataItems = []
+let dataIDs = []
+let levels = []
+let salesKeys = []
+Object.keys(data).forEach(key => {
+  dataItems.push(data[key].data)
+  dataIDs.push(0)
+  levels.push(data[key].levelIndex)
+  salesKeys.push(data[key].primaryKey)
+})
+
+console.log(dataItems, dataIDs, levels, salesKeys)
 
 treeManager.saveTreeToFiles(mapSalesToLevel(salesData,
-  [productsData, locations, calendar],
-  [PRODUCT_IDS.ITEM_ID, LOCATION_IDS.STORE_ID, CALENDAR_IDS.FRIDAY_END],
-  [productLevelColumnIndex, locationLevelColumnIndex, calendarLevelColumnIndex],
-  ['ITEM_ID', 'STORE_ID', 'FRIDAY_END']
+  dataItems,
+  dataIDs,
+  levels,
+  salesKeys
 ), './output', salesHeader)
