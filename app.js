@@ -1,5 +1,19 @@
 const filesManager = require('./filesManager.js')
 
+const SALES_IDS = {
+  STORE_ID: 0,
+  ITEM_ID: 1,
+  FRIDAY_END: 2,
+  UNITES: 3,
+  SALES: 4
+}
+
+const PRODUCT_IDS = {
+  ITEM_ID: 0,
+  CATEGORY_ID: 1,
+  DEPARTEMENT_ID: 2
+}
+
 const parseFile = (file) => {
   let allRows = require('fs').readFileSync(file).toString().split('\n')
   return {
@@ -19,7 +33,7 @@ const locations = parseFile('./location.csv')
 
 const mapItemsToLevel = (products, levelColumnIndex) => {
   return products.reduce((res, curr) => {
-    return Object.assign({}, res, { [curr[0]]: curr[levelColumnIndex] })
+    return Object.assign({}, res, { [curr[PRODUCT_IDS.ITEM_ID]]: curr[levelColumnIndex] })
   }, {})
 }
 
@@ -27,7 +41,7 @@ const mapSalesToLevel = (products, levelColumnIndex, sales) => {
   let tree = {}
   const mappedItems = mapItemsToLevel(products, levelColumnIndex)
   sales.forEach((salesItem) => {
-    let categoryId = mappedItems[salesItem[1]]
+    let categoryId = mappedItems[salesItem[SALES_IDS.ITEM_ID]]
     // write to file
     if (categoryId) {
       if (!tree[categoryId]) {
@@ -54,5 +68,5 @@ const saveTreeTofiles = (tree) => {
 }
 
 const levelName = process.argv[2]
-let levelColumnIndex = (levelName === 'category' ? 1 : 2)
+let levelColumnIndex = (levelName === 'category' ? PRODUCT_IDS.CATEGORY_ID : PRODUCT_IDS.DEPARTEMENT_ID)
 saveTreeTofiles(mapSalesToLevel(products, levelColumnIndex, salesData))
