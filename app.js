@@ -61,7 +61,7 @@ const mapSalesToLevel = (products, levelColumnIndex, sales, storeColumnIndex, lo
   const mappedStores = mapStoreToLevel(locations, storeColumnIndex)
   sales.forEach((salesItem) => {
     let categoryId = mappedItems[salesItem[SALES_IDS.ITEM_ID]]
-    let storeId = mappedStores[salesItem[SALES_IDS.ITEM_ID]]
+    let storeId = mappedStores[salesItem[SALES_IDS.STORE_ID]]
     // write to file
     if (categoryId && storeId) {
       if (!tree[categoryId]) {
@@ -80,13 +80,16 @@ const mapSalesToLevel = (products, levelColumnIndex, sales, storeColumnIndex, lo
 const saveTreeTofiles = (tree) => {
   Object.keys(tree).forEach((dirName) => {
     filesManager.createDir(dirName)
-    filesManager.saveSalesFile(
-      `${dirName}/sales.csv`,
-      tree[dirName]
-        .map(row => row.join(','))
-        .join('\n'),
-      salesHeader
-    )
+    Object.keys(tree[dirName]).forEach((subDirName) => {
+      filesManager.createDir(`${dirName}/${subDirName}`)
+      filesManager.saveSalesFile(
+        `${dirName}/${subDirName}/sales.csv`,
+        tree[dirName][subDirName]
+          .map(row => row.join(','))
+          .join('\n'),
+        salesHeader
+      )
+    })
   })
 }
 
@@ -96,7 +99,7 @@ const locationLevelName = process.argv[3]
 let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase()]
 let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
 
-console.log(mapSalesToLevel(productsData,
+saveTreeTofiles(mapSalesToLevel(productsData,
   productLevelColumnIndex,
   salesData,
   locationLevelColumnIndex,
