@@ -1,5 +1,4 @@
-const filesManager = require('./filesManager.js')
-var fs = require('fs')
+const treeManager = require('./treeManager.js')
 
 const SALES_IDS = {
   STORE_ID: 0,
@@ -43,28 +42,6 @@ const parseFile = (file) => {
   }
 }
 
-const pushInObject = (object, path, value) => {
-  let pathIndex = 0
-  let currentObject = object
-  let insertDone = false
-  while (!insertDone) {
-    let currentKey = path[pathIndex]
-    if (pathIndex === path.length - 1) {
-      if (!currentObject[currentKey]) {
-        currentObject[currentKey] = []
-      }
-      currentObject[currentKey].push(value)
-      insertDone = true
-      break
-    }
-    if (!currentObject[currentKey]) {
-      currentObject[currentKey] = {}
-    }
-    currentObject = currentObject[currentKey]
-    pathIndex++
-  }
-}
-
 const calendar = parseFile('./calendar.csv').data
 const products = parseFile('./product.csv')
 const productsData = products.data
@@ -90,32 +67,10 @@ const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
       return mapped[i][salesItem[SALES_IDS[key]]]
     })
     if (levels.every(e => e)) {
-      pushInObject(tree, levels, salesItem)
+      treeManager.pushInObject(tree, levels, salesItem)
     }
   })
   return tree
-}
-
-const saveTreeToFiles = (tree, path) => {
-  if (!fs.existsSync(path)) {
-    fs.mkdirSync(path)
-  }
-
-  if (!Array.isArray(tree)) {
-    Object.keys(tree).forEach((dirName) => {
-      filesManager.createDir(path + '/' + dirName, () => {
-        saveTreeToFiles(tree[dirName], path + '/' + dirName)
-      })
-    })
-  } else {
-    filesManager.saveSalesFile(
-      `${path}/sales.csv`,
-      tree
-        .map(row => row.join(','))
-        .join('\n'),
-      salesHeader
-    )
-  }
 }
 
 const productLevelName = process.argv[2]
@@ -126,9 +81,9 @@ let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase
 let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
 let calendarLevelColumnIndex = CALENDAR_IDS[calendarLevelName.toUpperCase()]
 
-saveTreeToFiles(mapSalesToLevel(salesData,
+treeManager.saveTreeToFiles(mapSalesToLevel(salesData,
   [productsData, locations, calendar],
   [PRODUCT_IDS.ITEM_ID, LOCATION_IDS.STORE_ID, CALENDAR_IDS.FRIDAY_END],
   [productLevelColumnIndex, locationLevelColumnIndex, calendarLevelColumnIndex],
   ['ITEM_ID', 'STORE_ID', 'FRIDAY_END']
-), './output')
+), './output', salesHeader)
