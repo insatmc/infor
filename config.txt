@@ -5,7 +5,7 @@ data-path=./
 [hierarchy-data]
 
 location=location.csv
-calendar=calendar.csv
+product=product.csv
 
 [fact-data]
 
@@ -14,4 +14,3 @@ sales=sales.csv
 [partitioning-keys]
 
 location=city
-calendar=year

@@ -1,10 +1,86 @@
-const treeManager = require('./treeManager.js')
-const configManager = require('./configManager.js')
 const fs = require('fs')
 const path = require('path')
+
 const configString = fs.readFileSync(process.argv[2], 'utf8')
 
-const config = configManager.mapConfigToObject(configString)
+
+const mapConfigToObject = configString =>
+    configString
+        .split('\n')
+        .filter(el => el)
+        .map(el => el.trim())
+        .reduce((res, cur) => {
+            if(cur[0] === '[') {
+                currentKey = cur.slice(1, -1)
+                return {...res, [currentKey]: {}}
+            }
+            const [key, value] = cur.split('=')
+            return {...res, [currentKey]: {...res[currentKey], [key]: value}}
+
+        } , {})
+
+
+const createDir = (dir, callback) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir)
+  }
+  callback()
+}
+
+const saveSalesFile = (path, content, salesHeader) => {
+  content = salesHeader + '\n' + content
+  fs.writeFile(path, content, (err) => {
+    if (err) {
+      return console.log(err)
+    }
+  })
+}
+const pushInObject = (object, path, value) => {
+  let pathIndex = 0
+  let currentObject = object
+  let insertDone = false
+  while (!insertDone) {
+    let currentKey = path[pathIndex]
+    if (pathIndex === path.length - 1) {
+      if (!currentObject[currentKey]) {
+        currentObject[currentKey] = []
+      }
+      currentObject[currentKey].push(value)
+      insertDone = true
+      break
+    }
+    if (!currentObject[currentKey]) {
+      currentObject[currentKey] = {}
+    }
+    currentObject = currentObject[currentKey]
+    pathIndex++
+  }
+}
+
+const saveTreeToFiles = (tree, path, header) => {
+  if (!fs.existsSync(path)) {
+    fs.mkdirSync(path)
+  }
+
+  if (!Array.isArray(tree)) {
+    Object.keys(tree).forEach((dirName) => {
+      createDir(path + '/' + dirName, () => {
+        saveTreeToFiles(tree[dirName], path + '/' + dirName, header)
+      })
+    })
+  } else {
+    saveSalesFile(
+      `${path}/sales.csv`,
+      tree
+        .map(row => row.join(','))
+        .join('\n'),
+      header
+    )
+  }
+}
+
+
+const config = mapConfigToObject(configString)
 
 const SALES_IDS = {
   STORE_ID: 0,
@@ -42,14 +118,19 @@ const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
   let tree = {}
   const mapped = []
   for (var i = 0; i < dataItems.length; i++) {
-    mapped.push(mapDataToLevel(dataItems[i], dataIDs[i], levels[i]))
+    if (levels[i]) {
+      mapped.push(mapDataToLevel(dataItems[i], dataIDs[i], levels[i]))
+    }
   }
   sales.forEach((salesItem) => {
-    let levels = salesKeys.map((key, i) => {
-      return mapped[i][salesItem[SALES_IDS[key]]]
-    })
-    if (levels.every(e => e)) {
-      treeManager.pushInObject(tree, levels, salesItem)
+    let levelsItems = salesKeys.map((key, i) => {
+      if (levels[i]) {
+        return mapped[i][salesItem[SALES_IDS[key]]]
+      }
+      return -1
+    }).filter(e => e !== -1)
+    if (levelsItems.every(e => e)) {
+      pushInObject(tree, levelsItems, salesItem)
     }
   })
   return tree
@@ -61,7 +142,7 @@ Object.keys(config['hierarchy-data']).map((fileName) => {
   const parsedFile = parseFile(path.join(dataPath, config['hierarchy-data'][fileName]))
   data[fileName] = {
     data: parsedFile.data,
-    levelIndex: parsedFile.header.toUpperCase().split(',').indexOf(config['partitioning-keys'][fileName].toUpperCase()),
+    levelIndex: (config['partitioning-keys'][fileName]) ? parsedFile.header.toUpperCase().split(',').indexOf(config['partitioning-keys'][fileName].toUpperCase()) : undefined,
     primaryKey: parsedFile.header.toUpperCase().split(',')[0]
   }
 })
@@ -78,7 +159,7 @@ Object.keys(data).forEach(key => {
   salesKeys.push(data[key].primaryKey)
 })
 
-treeManager.saveTreeToFiles(mapSalesToLevel(salesData,
+saveTreeToFiles(mapSalesToLevel(salesData,
   dataItems,
   dataIDs,
   levels,
