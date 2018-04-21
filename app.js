@@ -70,14 +70,13 @@ let dataItems = []
 let dataIDs = []
 let levels = []
 let salesKeys = []
+
 Object.keys(data).forEach(key => {
   dataItems.push(data[key].data)
   dataIDs.push(0)
   levels.push(data[key].levelIndex)
   salesKeys.push(data[key].primaryKey)
 })
-
-console.log(dataItems, dataIDs, levels, salesKeys)
 
 treeManager.saveTreeToFiles(mapSalesToLevel(salesData,
   dataItems,
