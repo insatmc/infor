@@ -18,7 +18,6 @@ const mapConfigToObject = configString =>
 
         } , {})
 
-
 const createDir = (dir, callback) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir)
@@ -29,6 +28,19 @@ const createDir = (dir, callback) => {
 const saveSalesFile = (path, content, salesHeader) => {
   content = salesHeader + '\n' + content
   fs.writeFile(path, content, (err) => {
+    if (err) {
+      return console.log(err)
+    }
+  })
+}
+
+const updateSalesFile = (path, content, salesHeader) => {
+  const oldContent = fs.readFileSync(path, 'utf8')
+  const newContent = salesHeader + '\n' + content
+  if(oldContent === newContent) {
+    return
+  }
+  fs.writeFile(path, newContent, (err) => {
     if (err) {
       return console.log(err)
     }
@@ -68,7 +80,8 @@ const saveTreeToFiles = (tree, path, header) => {
       })
     })
   } else {
-    saveSalesFile(
+    const saveOrUpdate = config.meta.update === "true" ? updateSalesFile : saveSalesFile
+    saveOrUpdate(
       `${path}/sales.csv`,
       tree
         .map(row => row.join(','))
@@ -126,8 +139,8 @@ const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
         return mapped[i][salesItem[SALES_IDS[key]]]
       }
       return -1
-    }).filter(e => e !== -1)
-    if (levelsItems.every(e => e)) {
+    }).filter(e => e && e !== -1)
+    if (levelsItems.length > 0 && levelsItems.every(e => e)) {
       pushInObject(tree, levelsItems, salesItem)
     }
   })
@@ -166,7 +179,6 @@ Object.keys(data).forEach(key => {
   salesKeys.push(data[key].primaryKey)
 })
 
-console.log(data)
 
 saveTreeToFiles(mapSalesToLevel(salesData,
   dataItems,

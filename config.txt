@@ -2,6 +2,8 @@
 
 data-path=./
 
+update=true
+
 [hierarchy-data]
 
 product=product.csv
@@ -10,7 +12,7 @@ calendar=calendar.csv
 
 [fact-data]
 
-sales=sales.csv
+sales=sales_increment.csv
 
 [partitioning-keys]
 
