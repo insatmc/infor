@@ -1,4 +1,10 @@
 const treeManager = require('./treeManager.js')
+const configManager = require('./configManager.js')
+const fs = require('fs')
+
+const configString = fs.readFileSync(process.argv[2] , 'utf8')
+
+const config = configManager.mapConfigToObject(configString)
 
 const SALES_IDS = {
   STORE_ID: 0,
@@ -42,13 +48,22 @@ const parseFile = (file) => {
   }
 }
 
-const calendar = parseFile('./calendar.csv').data
-const products = parseFile('./product.csv')
+const dataPath = config.meta['data-path']
+
+const calendarsPath = path.join(dataPath, config['hierarchy-data'].calendar)
+const productsPath = path.join(dataPath, config['hierarchy-data'].product)
+const locationsPath = path.join(dataPath, config['hierarchy-data'].location)
+
+
+const salesPath = path.join(dataPath, config['fact-data'].sales)
+
+const calendar = parseFile(calendarsPath).data
+const products = parseFile(productsPath)
 const productsData = products.data
-const sales = parseFile('./sales.csv')
+const sales = parseFile(salesPath)
 const salesHeader = sales.header
 const salesData = sales.data
-const locations = parseFile('./location.csv').data
+const locations = parseFile(locationsPath).data
 
 const mapDataToLevel = (data, dataID, levelColumnIndex) => {
   return data.reduce((res, curr) => {
@@ -73,9 +88,11 @@ const mapSalesToLevel = (sales, dataItems, dataIDs, levels, salesKeys) => {
   return tree
 }
 
-const productLevelName = process.argv[2]
-const locationLevelName = process.argv[3]
-const calendarLevelName = process.argv[4]
+console.log(config)
+
+const productLevelName = config['partitioning-keys'].product
+const locationLevelName = config['partitioning-keys'].location
+const calendarLevelName = config['partitioning-keys'].calendar
 
 let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase()]
 let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
