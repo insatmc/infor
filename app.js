@@ -3,7 +3,6 @@ const path = require('path')
 
 const configString = fs.readFileSync(process.argv[2], 'utf8')
 
-
 const mapConfigToObject = configString =>
     configString
         .split('\n')
@@ -79,7 +78,6 @@ const saveTreeToFiles = (tree, path, header) => {
   }
 }
 
-
 const config = mapConfigToObject(configString)
 
 const SALES_IDS = {
@@ -140,10 +138,19 @@ const data = {}
 
 Object.keys(config['hierarchy-data']).map((fileName) => {
   const parsedFile = parseFile(path.join(dataPath, config['hierarchy-data'][fileName]))
+  const header = parsedFile.header.toUpperCase().split(',')
+  let levelIndex
+  if (config['partitioning-keys'][fileName]) {
+    let level = config['partitioning-keys'][fileName].toUpperCase()
+    if (fileName === 'product' && level.indexOf('_ID') === -1) {
+      level += '_ID'
+    }
+    levelIndex = header.indexOf(level)
+  }
   data[fileName] = {
     data: parsedFile.data,
-    levelIndex: (config['partitioning-keys'][fileName]) ? parsedFile.header.toUpperCase().split(',').indexOf(config['partitioning-keys'][fileName].toUpperCase()) : undefined,
-    primaryKey: parsedFile.header.toUpperCase().split(',')[0]
+    levelIndex,
+    primaryKey: header[0]
   }
 })
 
@@ -158,6 +165,8 @@ Object.keys(data).forEach(key => {
   levels.push(data[key].levelIndex)
   salesKeys.push(data[key].primaryKey)
 })
+
+console.log(data)
 
 saveTreeToFiles(mapSalesToLevel(salesData,
   dataItems,
