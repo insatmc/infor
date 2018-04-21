@@ -25,7 +25,8 @@ const parseFile = (file) => {
 }
 
 const calendar = parseFile('./calendar.csv').data
-const products = parseFile('./product.csv').data
+const products = parseFile('./product.csv')
+const productsData = products.data
 const sales = parseFile('./sales.csv')
 const salesHeader = sales.header
 const salesData = sales.data
@@ -68,5 +69,5 @@ const saveTreeTofiles = (tree) => {
 }
 
 const levelName = process.argv[2]
-let levelColumnIndex = (levelName === 'category' ? PRODUCT_IDS.CATEGORY_ID : PRODUCT_IDS.DEPARTEMENT_ID)
-saveTreeTofiles(mapSalesToLevel(products, levelColumnIndex, salesData))
+let levelColumnIndex = PRODUCT_IDS[(levelName + '_Id').toUpperCase()]
+saveTreeTofiles(mapSalesToLevel(productsData, levelColumnIndex, salesData))
