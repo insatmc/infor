@@ -1,0 +1,10 @@
+Friday_End,Holiday,comment,Value
+2012-10-26,HALL,Halloween,0.29
+2012-11-02,HALL,Halloween,0.71
+2012-11-02,HALL1,1 weeks after Halloween,0.29
+2012-11-09,BFM2,2 weeks before Black Friday// Thanksgiving,1.0
+2012-11-09,HALL1,1 weeks after Halloween,0.71
+2012-11-16,BFM1,1 weeks before Black Friday// Thanksgiving,1.0
+2012-11-23,BF,Black Friday// Thanksgiving,1.0
+2012-11-30,XMASM3,3 weeks before Christmas,0.43
+2012-11-30,BF1,1 weeks after Black Friday// Thanksgiving,1.0
