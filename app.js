@@ -34,13 +34,14 @@ const saveSalesFile = (path, content, salesHeader) => {
     }
   })
 }
+
 const pushInObject = (object, path, value) => {
   let pathIndex = 0
   let currentObject = object
   let insertDone = false
   while (!insertDone) {
     let currentKey = path[pathIndex]
-    if (pathIndex === path.length - 1) {
+    if (pathIndex >= path.length - 1) {
       if (!currentObject[currentKey]) {
         currentObject[currentKey] = []
       }
@@ -166,11 +167,40 @@ Object.keys(data).forEach(key => {
   salesKeys.push(data[key].primaryKey)
 })
 
-console.log(data)
+const getMaxFileSizeFromTree = tree => {
+  return Math.max(...Object.keys(tree).map(key => {
+    if(Array.isArray(tree[key]))
+      return tree[key].length
+    return getMaxFileSizeFromTree(tree[key])
+  }))
+}
 
-saveTreeToFiles(mapSalesToLevel(salesData,
-  dataItems,
-  dataIDs,
-  levels,
-  salesKeys
-), './output', salesHeader)
+const pKeyMax = 2
+const lKeyMax = 7
+const cKeyMax = 3
+
+let bestSet = [1, 1, 1]
+let lowestScore = Infinity
+
+for(let pKey = 1; pKey < pKeyMax; pKey++) {
+  for(let lKey = 1; lKey < lKeyMax; lKey++) {
+    for(let cKey = 1; cKey < cKeyMax; cKey++) {
+      const set = [pKey, lKey, cKey]
+      const tree = mapSalesToLevel(
+        salesData,
+        dataItems,
+        dataIDs,
+        set,
+        salesKeys
+      )
+      const treeScore = getMaxFileSizeFromTree(tree)
+      
+      if(treeScore < lowestScore) {
+        lowestScore = treeScore
+        bestSet = set
+      }
+    }
+  }    
+}
+
+console.log(bestSet)
