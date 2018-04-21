@@ -14,6 +14,17 @@ const PRODUCT_IDS = {
   DEPARTEMENT_ID: 2
 }
 
+const LOCATION_IDS = {
+  STORE_ID: 0,
+  ZIPCODE: 1,
+  LATITUTE: 2,
+  LONGITUDE: 3,
+  COUNTY: 4,
+  CITY: 5,
+  STATE: 6,
+  TYPE: 7
+}
+
 const parseFile = (file) => {
   let allRows = require('fs').readFileSync(file).toString().split('\n')
   return {
@@ -30,7 +41,7 @@ const productsData = products.data
 const sales = parseFile('./sales.csv')
 const salesHeader = sales.header
 const salesData = sales.data
-const locations = parseFile('./location.csv')
+const locations = parseFile('./location.csv').data
 
 const mapItemsToLevel = (products, levelColumnIndex) => {
   return products.reduce((res, curr) => {
@@ -38,20 +49,31 @@ const mapItemsToLevel = (products, levelColumnIndex) => {
   }, {})
 }
 
-const mapSalesToLevel = (products, levelColumnIndex, sales) => {
+const mapStoreToLevel = (locations, levelColumnIndex) => {
+  return locations.reduce((res, curr) => {
+    return Object.assign({}, res, { [curr[LOCATION_IDS.STORE_ID]]: curr[levelColumnIndex] })
+  }, {})
+}
+
+const mapSalesToLevel = (products, levelColumnIndex, sales, storeColumnIndex, locations) => {
   let tree = {}
   const mappedItems = mapItemsToLevel(products, levelColumnIndex)
+  const mappedStores = mapStoreToLevel(locations, storeColumnIndex)
   sales.forEach((salesItem) => {
     let categoryId = mappedItems[salesItem[SALES_IDS.ITEM_ID]]
+    let storeId = mappedStores[salesItem[SALES_IDS.ITEM_ID]]
     // write to file
-    if (categoryId) {
+    if (categoryId && storeId) {
       if (!tree[categoryId]) {
-        tree[categoryId] = []
+        tree[categoryId] = {}
       }
-      tree[categoryId].push(salesItem)
+      if (!tree[categoryId][storeId]) {
+        tree[categoryId][storeId] = []
+      }
+
+      tree[categoryId][storeId].push(salesItem)
     }
   })
-
   return tree
 }
 
@@ -68,6 +90,14 @@ const saveTreeTofiles = (tree) => {
   })
 }
 
-const levelName = process.argv[2]
-let levelColumnIndex = PRODUCT_IDS[(levelName + '_Id').toUpperCase()]
-saveTreeTofiles(mapSalesToLevel(productsData, levelColumnIndex, salesData))
+const productLevelName = process.argv[2]
+const locationLevelName = process.argv[3]
+
+let productLevelColumnIndex = PRODUCT_IDS[(productLevelName + '_Id').toUpperCase()]
+let locationLevelColumnIndex = LOCATION_IDS[locationLevelName.toUpperCase()]
+
+console.log(mapSalesToLevel(productsData,
+  productLevelColumnIndex,
+  salesData,
+  locationLevelColumnIndex,
+  locations))
